@@ -1,2 +1,4 @@
 *.tmproj
 .rvmrc
+example/vaporize.yml
+example/data

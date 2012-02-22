@@ -17,4 +17,8 @@ Gem::Specification.new do |s|
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {spec}/*`.split("\n")
   s.require_paths = [ "lib" ]
+  
+  s.add_dependency("aws-s3",  [ "~> 0.6.2"  ])
+  s.add_dependency('sqlite3', [ "~> 1.3.5"  ])
+  s.add_dependency('trollop', [ "~> 1.16.2" ])
 end

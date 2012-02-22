@@ -1,0 +1,7 @@
+directory: example/data
+interval:  5
+daemonize: yes
+datafile:  vaporize.db
+s3_key:    <your s3 key>
+s3_secret: <your s3 secret>
+s3_bucket: <your s3 bucket>
