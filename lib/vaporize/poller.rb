@@ -26,6 +26,8 @@ module Vaporize
       def process(dir, &block)
         dir.entries.each do |entry|
           
+          break unless running
+          
           next if entry == "." || entry == ".."
           
           path = File.join(dir.path, entry)

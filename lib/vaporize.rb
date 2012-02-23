@@ -1,6 +1,7 @@
 require 'trollop'
 require 'aws/s3'
 require 'sqlite3'
+require 'progressbar'
 require 'vaporize/utils'
 require 'vaporize/config'
 require 'vaporize/database'

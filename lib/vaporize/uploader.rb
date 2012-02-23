@@ -1,5 +1,30 @@
+# annoyingly, AWS::S3 tampers with this value and sets it to
+# 1MB. Make it smaller so we can log progress better.
+module Net
+  class HTTPGenericRequest
+    def chunk_size
+      Net::HTTPGenericRequest::BUFSIZE
+    end
+  end
+end
+
 module Vaporize
   class Uploader
+    class ProgressFile < File    
+      
+      def initialize(log, *args)
+        super(*args)
+        if log
+          @progress = ProgressBar.new(self.class.basename(path), lstat.size, log)
+        end
+      end
+        
+      def read(*args)
+        @progress.set(tell) if @progress
+        super(*args)
+      end
+    end
+    
     def initialize(config)
       @config = config
       @db     = Database.new(config.datafile)
@@ -17,8 +42,10 @@ module Vaporize
       record     = @db.find(@config.relpath(path))
       updated_at = File.mtime(path)
       
-      unless record && updated_at <= record.updated_at
-        @db.update(do_upload(path), :bucket => @config.s3_bucket, :updated_at => updated_at)
+      if record && updated_at <= record.updated_at
+        @config.logger.puts("SKIP: #{path.inspect}")
+      else
+        @db.update(store(path), :bucket => @config.s3_bucket, :updated_at => updated_at)
       end
     rescue AWS::S3::S3Exception
       return
@@ -26,10 +53,10 @@ module Vaporize
     
     protected
     
-      def do_upload(path)
+      def store(path)
         @config.relpath(path).tap do |key|
-          AWS::S3::S3Object.store(key, File.open(path), @config.s3_bucket)
-          @config.logger.puts("STORED #{path.inspect} at #{key.inspect} in bucket #{@config.s3_bucket.inspect}")
+          AWS::S3::S3Object.store(key, ProgressFile.open(@config.logger, path), @config.s3_bucket)
+          @config.logger.puts("STORE: #{path.inspect} at #{key.inspect} in bucket #{@config.s3_bucket.inspect}")
         end
       end
   end
