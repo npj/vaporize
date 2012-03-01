@@ -28,7 +28,7 @@ module Vaporize
           
           break unless running
           
-          next if entry == "." || entry == ".."
+          next if entry == "." || entry == ".." || entry =~ @config.skip
           
           path = File.join(dir.path, entry)
           

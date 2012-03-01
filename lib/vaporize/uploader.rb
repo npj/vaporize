@@ -27,12 +27,9 @@ module Vaporize
     
     def initialize(config)
       @config = config
-      @db     = Database.new(config.datafile)
+      @db     = config.database
       
-      AWS::S3::Base.establish_connection!({
-        :access_key_id     => config.s3_key,
-        :secret_access_key => config.s3_secret
-      })
+      @config.connect_s3!
     end
     
     def upload(path)
@@ -40,12 +37,12 @@ module Vaporize
       return unless File.exists?(path)
       
       record     = @db.find(@config.relpath(path))
-      updated_at = File.mtime(path)
+      updated_at = File.mtime(path).utc
       
       if record && updated_at <= record.updated_at
         @config.logger.puts("SKIP: #{path.inspect}")
       else
-        @db.update(store(path), :bucket => @config.s3_bucket, :updated_at => updated_at)
+        @db.update(store(path), :bucket => @config.s3_bucket, :content_type => '', :updated_at => updated_at)
       end
     rescue AWS::S3::S3Exception
       return

@@ -4,12 +4,17 @@ module Vaporize
   class Config
     
     attr_accessor :verbose
-    attr_reader :dir, :interval, :daemonize, :datafile, :s3_key, :s3_secret, :s3_bucket
+    attr_reader :dir, :interval, :daemonize, :skip, :datafile, :s3_key, :s3_secret, :s3_bucket
+    
+    def self.from_file(file)
+      self.new(YAML.load(File.read(file)))
+    end
     
     def initialize(args = { })
       @dir       = self.class.validate_directory(args['directory'])
       @interval  = self.class.validate_interval(args['interval'] || 1)
       @daemonize = self.class.validate_daemonize(args['daemonize'] || "no")
+      @skip      = self.class.validate_skip(args['skip'] || /^\./)
       @datafile  = File.join(@dir.path, (args['datafile'] || "vaporize.db"))
       @s3_key    = self.class.validate_s3_key(args['s3_key'])
       @s3_secret = self.class.validate_s3_secret(args['s3_secret'])
@@ -26,6 +31,17 @@ module Vaporize
     
     def datafile?(path)
       relpath(path) == relpath(@datafile)
+    end
+    
+    def database
+      @database ||= Database.new(self.datafile)
+    end
+    
+    def connect_s3!
+      AWS::S3::Base.establish_connection!({
+        :access_key_id     => self.s3_key,
+        :secret_access_key => self.s3_secret
+      })
     end
     
     def relpath(path)
@@ -48,6 +64,11 @@ module Vaporize
       
       def self.validate_daemonize(daemonize)
         daemonize == "yes"
+      end
+      
+      def self.validate_skip(skip)
+        raise 'skip: not a regular expression' unless skip.is_a?(Regexp)
+        skip
       end
       
       def self.validate_datadir(path)

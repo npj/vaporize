@@ -2,14 +2,14 @@ module Vaporize
   class Database
     class Record
       
-      attr_accessor :id, :path, :bucket, :updated_at
+      attr_accessor :id, :path, :bucket, :content_type, :updated_at
       
-      def self.create(path, bucket, updated_at, db)
-        new([ nil, path, bucket, updated_at ], db).save
+      def self.create(path, bucket, content_type, updated_at, db)
+        new([ nil, path, bucket, content_type, updated_at ], db).save
       end
       
       def initialize(row, db)
-        @id, @path, @bucket, @updated_at = row
+        @id, @path, @bucket, @content_type, @updated_at = row
         @db = db
         
         @updated_at = deserialize(@updated_at)
@@ -17,9 +17,9 @@ module Vaporize
       
       def save
         if id
-          @db.execute("UPDATE files SET path=?, bucket=?, updated_at=? WHERE id=?", path, bucket, serialize(updated_at), id)
+          @db.execute("UPDATE files SET path=?, bucket=?, content_type=?, updated_at=? WHERE id=?", path, bucket, content_type, serialize(updated_at), id)
         else
-          @db.execute("INSERT INTO files (path, bucket, updated_at) VALUES (?, ?, ?)", path, bucket, serialize(updated_at))
+          @db.execute("INSERT INTO files (path, bucket, content_type, updated_at) VALUES (?, ?, ?, ?)", path, bucket, content_type, serialize(updated_at))
           id = @db.last_insert_row_id
         end
       end
@@ -46,8 +46,9 @@ module Vaporize
       create_schema
     end
     
-    def destroy_all
-      @db.execute("TRUNCATE TABLE files")
+    def reset
+      @db.execute("DROP TABLE files")
+      create_schema
     end
     
     def find(path)
@@ -60,11 +61,12 @@ module Vaporize
     
     def update(path, attributes = { })
       if record = find(path)
-        record.updated_at = attributes[:updated_at]
-        record.bucket     = attributes[:bucket]
+        record.updated_at   = attributes[:updated_at]
+        record.content_type = attributes[:content_type]
+        record.bucket       = attributes[:bucket]
         record.save
       else
-        Record.create(path, attributes[:bucket], attributes[:updated_at], @db)
+        Record.create(path, attributes[:bucket], attributes[:content_type], attributes[:updated_at], @db)
       end
     end
     
@@ -75,10 +77,11 @@ module Vaporize
         unless tables.flatten.include?("files")
           sql = %{
             CREATE TABLE files (
-              id          INTEGER PRIMARY KEY,
-              path        VARCHAR(255),
-              bucket      VARCHAR(255), 
-              updated_at  INT 
+              id           INTEGER PRIMARY KEY,
+              path         VARCHAR(255),
+              bucket       VARCHAR(255), 
+              content_type VARCHAR(255),
+              updated_at   INT 
             );
           }
           @db.execute(sql)
